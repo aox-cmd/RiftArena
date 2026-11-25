@@ -1,0 +1,127 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum CharacterClass {
+  WARRIOR
+  MAGE
+  ASSASSIN
+  GUARDIAN
+  SUPPORT
+}
+
+enum MatchMode {
+  QUICK
+  RANKED
+}
+
+enum MatchStatus {
+  WAITING
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+model User {
+  id           String   @id @default(uuid())
+  username     String   @unique @db.VarChar(24)
+  email        String   @unique @db.VarChar(191)
+  passwordHash String
+  rating       Int      @default(1000)
+  wins         Int      @default(0)
+  losses       Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  decks       Deck[]
+  characters  PlayerCharacter[]
+  matchesAsP1 Match[]           @relation("PlayerOne")
+  matchesAsP2 Match[]           @relation("PlayerTwo")
+  matchesWon  Match[]           @relation("Winner")
+
+  @@index([rating])
+}
+
+model Character {
+  id          String         @id @default(uuid())
+  name        String         @unique
+  description String         @db.Text
+  class       CharacterClass
+  health      Int
+  attack      Int
+  defense     Int
+  speed       Int
+  imageUrl    String?
+  isStarter   Boolean        @default(false)
+  createdAt   DateTime       @default(now())
+
+  owners      PlayerCharacter[]
+  deckEntries DeckCharacter[]
+}
+
+model PlayerCharacter {
+  userId      String
+  characterId String
+  unlockedAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+
+  @@id([userId, characterId])
+}
+
+model Deck {
+  id        String   @id @default(uuid())
+  userId    String
+  name      String
+  isActive  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  characters DeckCharacter[]
+
+  @@index([userId])
+}
+
+model DeckCharacter {
+  deckId      String
+  characterId String
+  position    Int
+
+  deck Deck @relation(fields: [deckId], references: [id], onDelete: Cascade)
+
+  character Character @relation(fields: [characterId], references: [id])
+
+  @@id([deckId, position])
+  @@unique([deckId, characterId])
+}
+
+model Match {
+  id         String      @id @default(uuid())
+  player1Id  String
+  player2Id  String
+  winnerId   String?
+  mode       MatchMode
+  status     MatchStatus @default(WAITING)
+  gameState  Json?
+  createdAt  DateTime    @default(now())
+  finishedAt DateTime?
+
+  player1 User @relation("PlayerOne", fields: [player1Id], references: [id])
+
+  player2 User @relation("PlayerTwo", fields: [player2Id], references: [id])
+
+  winner User? @relation("Winner", fields: [winnerId], references: [id])
+
+  @@index([player1Id, createdAt])
+  @@index([player2Id, createdAt])
+  @@index([status])
+}

@@ -1,0 +1,159 @@
+name: RiftArena CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend Build and Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: ci_root_password
+          MYSQL_DATABASE: riftarena_test
+          MYSQL_USER: riftarena
+          MYSQL_PASSWORD: ci_password
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=30
+
+    env:
+      DATABASE_URL: mysql://riftarena:ci_password@127.0.0.1:3306/riftarena_test
+      JWT_SECRET: ci_test_secret_not_for_production_1234567890
+      JWT_EXPIRES_IN: 7d
+      NODE_ENV: test
+      PORT: 4000
+      CLIENT_URL: http://localhost:5173
+      LOG_LEVEL: warn
+
+    defaults:
+      run:
+        working-directory: server
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate Prisma schema
+        run: npx prisma validate
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Apply database migrations
+        run: npx prisma migrate deploy
+
+      - name: Seed starter characters
+        run: npm run seed
+
+      - name: Compile backend
+        run: npm run build
+
+      - name: Run battle engine tests
+        run: npm run test:battle
+
+      - name: Run ranking tests
+        run: npm run test:ranking
+
+      - name: Run integration tests
+        shell: bash
+        run: |
+          node dist/index.js > server.log 2>&1 &
+          SERVER_PID=$!
+
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+
+          READY=0
+
+          for i in {1..60}; do
+            if curl --fail --silent \
+              http://localhost:4000/api/health; then
+              READY=1
+              break
+            fi
+
+            sleep 2
+          done
+
+          if [ "$READY" -ne 1 ]; then
+            cat server.log
+            exit 1
+          fi
+
+          npm run test:security
+          npm run test:competitive
+
+      - name: Upload server logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-logs
+          path: server/server.log
+          if-no-files-found: ignore
+          retention-days: 3
+
+  frontend:
+    name: Frontend Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    defaults:
+      run:
+        working-directory: client
+
+    env:
+      VITE_API_URL: http://localhost:4000/api
+      VITE_SOCKET_URL: http://localhost:4000
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build frontend
+        run: npm run build
+
+      - name: Upload frontend build
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-build
+          path: client/dist
+          retention-days: 3

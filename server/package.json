@@ -1,0 +1,51 @@
+{
+  "name": "server",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "seed": "tsx scripts/seed.ts",
+    "test:battle": "tsx --test scripts/battle.test.ts",
+    "simulate": "tsx scripts/simulate-battle.ts",
+    "test:multiplayer": "tsx scripts/multiplayer.test.ts",
+    "test:ranking": "tsx --test scripts/ranking.test.ts",
+    "test:security": "tsx scripts/security.test.ts",
+    "test:competitive": "tsx scripts/competitive.test.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "@prisma/client": "^6.19.3",
+    "bcryptjs": "^3.0.3",
+    "compression": "^1.8.2",
+    "cors": "^2.8.6",
+    "dotenv": "^18.0.10",
+    "express": "^5.3.0",
+    "express-rate-limit": "^8.7.5",
+    "helmet": "^8.3.0",
+    "jsonwebtoken": "^9.0.3",
+    "mysql2": "^3.24.6",
+    "pino": "^10.4.0",
+    "pino-http": "^11.0.0",
+    "socket.io": "^4.8.4",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/compression": "^1.8.1",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^26.6.10",
+    "pino-pretty": "^13.2.0",
+    "prisma": "^6.19.3",
+    "socket.io-client": "^4.8.4",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  }
+}

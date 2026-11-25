@@ -1,0 +1,32 @@
+node_modules/
+dist/
+.env
+.env.*
+!.env.example
+*.log
+coverage/
+.vscode/
+.idea/
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+coverage/
+*.tsbuildinfo
+
+# Environment secrets
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+
+# Editors
+.vscode/
+.idea/
+
+# Operating system
+.DS_Store
+Thumbs.db
